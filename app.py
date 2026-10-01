@@ -26,11 +26,14 @@ class VercelPathFixMiddleware:
         # Handle cases where Vercel rewrites to /api/index.py, /api/index, /app.py, etc.
         if path in ('/api/index.py', '/api/index', '/api', '/app.py', '/app'):
             orig_path = (
+                environ.get('HTTP_X_MATCHED_PATH') or
                 environ.get('HTTP_X_FORWARDED_PATH') or
                 environ.get('HTTP_X_ORIGINAL_URI') or
                 environ.get('HTTP_X_REWRITE_URL') or
                 '/'
             )
+            if orig_path in ('/api/index.py', '/api/index', '/api', '/app.py', '/app'):
+                orig_path = '/'
             environ['PATH_INFO'] = orig_path.split('?')[0] or '/'
         elif path.startswith('/api/index.py/'):
             environ['PATH_INFO'] = path[len('/api/index.py'):]
@@ -40,6 +43,7 @@ class VercelPathFixMiddleware:
             environ['PATH_INFO'] = path[len('/app.py'):]
 
         return self.wsgi_app(environ, start_response)
+
 
 
 def create_app():
