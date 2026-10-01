@@ -15,11 +15,10 @@ A clean, personal YouTube video tracking web application built with **Python, Fl
 
 ```text
 calalog/
-├── api/
-│   └── index.py            # Vercel serverless function entry point
-├── vercel.json             # Vercel rewrite configuration
-├── app.py                  # Flask application factory and entry point
+├── app.py                  # Flask application entry point with WSGI normalization
 ├── config.py               # Environment configuration and database path
+├── pyproject.toml          # Vercel entrypoint and project configuration
+├── vercel.json             # Vercel static asset caching headers
 ├── requirements.txt        # Python package dependencies
 ├── models/
 │   ├── __init__.py
@@ -39,6 +38,8 @@ calalog/
 │   ├── dashboard.html      # Player view, URL tracker, companion sidebar
 │   ├── library.html        # Video library with search, filter, sort
 │   └── queue.html          # Playlist queue manager
+├── public/                 # Served directly by Vercel's global CDN
+│   └── static/             # Static CSS and JS assets for edge caching
 └── static/
     ├── css/
     │   └── style.css       # Clean, restrained developer-built dark theme
@@ -65,5 +66,5 @@ The app will start at `http://0.0.0.0:3000`.
 
 1. Push this repository to GitHub.
 2. Import the repository in [Vercel](https://vercel.com).
-3. Vercel automatically detects the Python runtime, installs `requirements.txt`, and serves the Flask app via [api/index.py](file:///home/akash/Downloads/lumen/api/index.py) and [vercel.json](file:///home/akash/Downloads/lumen/vercel.json).
+3. Vercel automatically detects the Python Flask application via `app.py` and `pyproject.toml`, serving all dynamic routes with zero configuration and serving `public/static/` assets directly via the global Edge CDN.
 

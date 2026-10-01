@@ -1,0 +1,12 @@
+[project]
+name = "calalog"
+version = "1.0.0"
+description = "Calalog — YouTube Video Tracker & Resume Player"
+requires-python = ">=3.12"
+dependencies = [
+    "Flask>=3.1.0",
+    "werkzeug>=3.1.3",
+]
+
+[tool.vercel]
+entrypoint = "app.py:app"

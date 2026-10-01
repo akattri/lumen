@@ -5,6 +5,9 @@ from models.db import get_videos_by_user, get_queue_by_user, get_video_by_id
 views_bp = Blueprint('views', __name__)
 
 
+@views_bp.route('/dashboard')
+@views_bp.route('/index')
+@views_bp.route('/index.html')
 @views_bp.route('/')
 def dashboard():
     user = get_current_user()

@@ -7,7 +7,7 @@ if os.path.exists(PYLIB_DIR) and PYLIB_DIR not in sys.path:
     sys.path.append(PYLIB_DIR)
 
 from datetime import datetime, timedelta
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, send_from_directory
 from config import SECRET_KEY, PORT, HOST, DEBUG
 from models.db import init_db
 from routes.auth import auth_bp
@@ -16,10 +16,40 @@ from routes.views import views_bp
 from services.youtube import format_seconds_to_time
 
 
+class VercelPathFixMiddleware:
+    """WSGI middleware to normalize request paths under Vercel serverless deployment."""
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        path = environ.get('PATH_INFO', '')
+        # Handle cases where Vercel rewrites to /api/index.py, /api/index, /app.py, etc.
+        if path in ('/api/index.py', '/api/index', '/api', '/app.py', '/app'):
+            orig_path = (
+                environ.get('HTTP_X_FORWARDED_PATH') or
+                environ.get('HTTP_X_ORIGINAL_URI') or
+                environ.get('HTTP_X_REWRITE_URL') or
+                '/'
+            )
+            environ['PATH_INFO'] = orig_path.split('?')[0] or '/'
+        elif path.startswith('/api/index.py/'):
+            environ['PATH_INFO'] = path[len('/api/index.py'):]
+        elif path.startswith('/api/index/'):
+            environ['PATH_INFO'] = path[len('/api/index'):]
+        elif path.startswith('/app.py/'):
+            environ['PATH_INFO'] = path[len('/app.py'):]
+
+        return self.wsgi_app(environ, start_response)
+
+
 def create_app():
+    static_dir = os.path.join(BASE_DIR, 'public', 'static')
+    if not os.path.exists(static_dir):
+        static_dir = os.path.join(BASE_DIR, 'static')
+
     app = Flask(
         __name__,
-        static_folder=os.path.join(BASE_DIR, 'static'),
+        static_folder=static_dir,
         template_folder=os.path.join(BASE_DIR, 'templates')
     )
     app.config['SECRET_KEY'] = SECRET_KEY
@@ -68,6 +98,17 @@ def create_app():
         except Exception:
             return "recently"
 
+    # Explicit static route fallback for environments where CDN rewrite falls through to Flask
+    @app.route('/static/<path:filename>')
+    def serve_static(filename):
+        for candidate in [
+            os.path.join(BASE_DIR, 'public', 'static'),
+            os.path.join(BASE_DIR, 'static')
+        ]:
+            if os.path.exists(os.path.join(candidate, filename)):
+                return send_from_directory(candidate, filename)
+        return render_template('base.html', not_found=True), 404
+
     @app.errorhandler(404)
     def page_not_found(e):
         return render_template('base.html', not_found=True), 404
@@ -80,6 +121,7 @@ def create_app():
 
 
 app = create_app()
+app.wsgi_app = VercelPathFixMiddleware(app.wsgi_app)
 
 if __name__ == '__main__':
     print(f"Calalog running on http://{HOST}:{PORT}")
