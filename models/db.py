@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from werkzeug.security import generate_password_hash, check_password_hash
-from config import DB_PATH, DATA_DIR
+from config import DB_PATH, DATA_DIR, BASE_DIR
 
 
 def get_db_connection() -> sqlite3.Connection:
@@ -71,7 +71,7 @@ def init_db():
     conn.commit()
 
     # Migrate from data/waterloo.json if it exists and has users
-    waterloo_json = os.path.join(DATA_DIR, 'waterloo.json')
+    waterloo_json = os.path.join(BASE_DIR, 'data', 'waterloo.json')
     if os.path.exists(waterloo_json):
         try:
             with open(waterloo_json, 'r', encoding='utf-8') as f:

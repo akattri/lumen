@@ -4,7 +4,7 @@ import sys
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 PYLIB_DIR = os.path.join(BASE_DIR, 'pylib')
 if os.path.exists(PYLIB_DIR) and PYLIB_DIR not in sys.path:
-    sys.path.insert(0, PYLIB_DIR)
+    sys.path.append(PYLIB_DIR)
 
 from datetime import datetime, timedelta
 from flask import Flask, render_template, jsonify
@@ -17,7 +17,11 @@ from services.youtube import format_seconds_to_time
 
 
 def create_app():
-    app = Flask(__name__, static_folder='static', template_folder='templates')
+    app = Flask(
+        __name__,
+        static_folder=os.path.join(BASE_DIR, 'static'),
+        template_folder=os.path.join(BASE_DIR, 'templates')
+    )
     app.config['SECRET_KEY'] = SECRET_KEY
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
     app.config['JSON_SORT_KEYS'] = False

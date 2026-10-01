@@ -15,6 +15,9 @@ A clean, personal YouTube video tracking web application built with **Python, Fl
 
 ```text
 calalog/
+├── api/
+│   └── index.py            # Vercel serverless function entry point
+├── vercel.json             # Vercel rewrite configuration
 ├── app.py                  # Flask application factory and entry point
 ├── config.py               # Environment configuration and database path
 ├── requirements.txt        # Python package dependencies
@@ -44,7 +47,7 @@ calalog/
         └── app.js          # App interactions, search, filter, queue
 ```
 
-## Running the Application
+## Running Locally
 
 1. Install dependencies:
 ```bash
@@ -57,3 +60,10 @@ python3 app.py
 ```
 
 The app will start at `http://0.0.0.0:3000`.
+
+## Deploying to Vercel
+
+1. Push this repository to GitHub.
+2. Import the repository in [Vercel](https://vercel.com).
+3. Vercel automatically detects the Python runtime, installs `requirements.txt`, and serves the Flask app via [api/index.py](file:///home/akash/Downloads/lumen/api/index.py) and [vercel.json](file:///home/akash/Downloads/lumen/vercel.json).
+
