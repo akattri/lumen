@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Your Library — Calalog{% endblock %}
+
+{% block content %}
+<div class="site-container">
+  <!-- Library Header -->
+  <div class="panel" style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px;">
+    <div>
+      <h1 style="font-size:18px; font-weight:800; letter-spacing:-0.03em; color:#FFFFFF;">YOUR VIDEO LIBRARY</h1>
+      <p style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+        {{ videos|length }} {{ 'video' if videos|length == 1 else 'videos' }} tracked with exact playback timestamps
+      </p>
+    </div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <a href="{{ url_for('views.dashboard') }}" class="btn-secondary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        <span>Back to Player</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Search, Filter & Sort Controls -->
+  <div class="controls-bar">
+    <!-- Filter Tabs -->
+    <div class="filter-tabs">
+      <button class="filter-btn filter-tab-btn active" data-filter="all">
+        <span>All</span>
+        <span class="count-badge">{{ videos|length }}</span>
+      </button>
+      <button class="filter-btn filter-tab-btn" data-filter="in-progress">
+        <span>In Progress</span>
+        <span class="count-badge">{{ videos|selectattr('status', 'equalto', 'in-progress')|list|length }}</span>
+      </button>
+      <button class="filter-btn filter-tab-btn" data-filter="unwatched">
+        <span>Unwatched</span>
+        <span class="count-badge">{{ videos|selectattr('status', 'equalto', 'unwatched')|list|length }}</span>
+      </button>
+      <button class="filter-btn filter-tab-btn" data-filter="completed">
+        <span>Completed</span>
+        <span class="count-badge">{{ videos|selectattr('status', 'equalto', 'completed')|list|length }}</span>
+      </button>
+    </div>
+
+    <!-- Search & Sort -->
+    <div class="search-and-sort">
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="library-search-input" placeholder="Search saved videos...">
+      </div>
+
+      <select id="library-sort-select" class="sort-select">
+        <option value="recent_watched">Recently Watched</option>
+        <option value="recent_added">Recently Added</option>
+        <option value="progress">Highest Progress</option>
+        <option value="title">Alphabetical (Title)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Video Cards Grid -->
+  <div id="library-cards-container" class="library-grid">
+    {% for video in videos %}
+    <div class="video-card" id="video-card-{{ video.id }}" data-status="{{ video.status }}" data-title="{{ video.title }}" data-youtube-id="{{ video.youtube_video_id }}" data-progress="{{ video.progress_percentage }}" data-last-watched="{{ video.last_watched_at or '' }}" data-created-at="{{ video.created_at }}">
+      <div class="card-thumb-container" onclick="window.location.href='/?v={{ video.id }}'">
+        <img src="{{ video.thumbnail }}" alt="{{ video.title }}" loading="lazy">
+        <span class="card-status-badge {{ video.status }}">{{ video.status|replace('-', ' ') }}</span>
+        <span class="card-duration-badge">{{ video.current_time|format_time }} / {{ video.duration|format_time }}</span>
+        <div class="card-progress-bar-bottom">
+          <div class="card-progress-bar-fill {% if video.status == 'completed' %}completed{% endif %}" style="width: {{ video.progress_percentage }}%;"></div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div>
+          <h3 class="card-title" onclick="window.location.href='/?v={{ video.id }}'">{{ video.title }}</h3>
+          <div class="card-meta-row">
+            <span>Watched {{ video.last_watched_at|format_relative_time }}</span>
+            <span style="font-family: var(--font-mono); font-weight:600;">{{ video.progress_percentage }}%</span>
+          </div>
+        </div>
+        <div class="card-actions">
+          <a href="/?v={{ video.id }}" class="btn-secondary" style="font-size:11px; padding:4px 8px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            <span>{% if video.current_time > 5 %}Resume ({{ video.current_time|format_time }}){% else %}Play{% endif %}</span>
+          </a>
+          <div class="action-btn-group">
+            <button data-action="add-to-queue" data-video-id="{{ video.id }}" class="btn-icon" title="Add to queue">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+            </button>
+            {% if video.status != 'completed' %}
+            <button data-action="mark-completed" data-video-id="{{ video.id }}" data-duration="{{ video.duration }}" class="btn-icon" title="Mark as completed">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            </button>
+            {% else %}
+            <button data-action="reset-progress" data-video-id="{{ video.id }}" class="btn-icon" title="Mark unwatched">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+            </button>
+            {% endif %}
+            <button data-action="delete-video" data-video-id="{{ video.id }}" class="btn-icon" title="Delete from library">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- No match feedback -->
+  <div id="library-no-match" class="panel" style="display: none; text-align: center; padding: 40px 10px; color: var(--text-subtle);">
+    <p>No videos match your search or filter criteria.</p>
+  </div>
+
+  {% if videos|length == 0 %}
+  <div class="panel" style="text-align: center; padding: 60px 20px; color: var(--text-subtle);">
+    <p>Your library is empty.</p>
+    <a href="{{ url_for('views.dashboard') }}" class="btn-primary" style="margin-top: 12px; display: inline-flex;">
+      Add your first video
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

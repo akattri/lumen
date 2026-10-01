@@ -1,0 +1,451 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if current_video %}{{ current_video.title }} — Calalog{% else %}Dashboard — Calalog{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="site-container">
+  <!-- URL Tracking Panel -->
+  <section class="panel">
+    <div style="max-width: 700px;">
+      <h2 class="panel-title">Add YouTube Video to Track</h2>
+      <form id="url-track-form" class="url-input-form" style="margin-top: 8px;">
+        <div class="input-wrapper">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+          <input type="text" id="url-input-field" class="input-field" placeholder="Paste YouTube link (e.g. https://www.youtube.com/watch?v=... or youtu.be/...)" autocomplete="off">
+        </div>
+        <button type="submit" id="url-submit-btn" class="btn-primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <span>Track</span>
+        </button>
+      </form>
+      <div id="url-feedback" class="feedback-banner" style="display: none;"></div>
+    </div>
+  </section>
+
+  {% if current_video %}
+  <!-- Active Player & Companion Area -->
+  <section class="player-grid">
+    <!-- Main Player Column -->
+    <div>
+      <div id="calalog-player-container" class="player-card" tabindex="0">
+        <div class="video-container">
+          <!-- Clean YouTube Video Stream Iframe (Native UI disabled: controls=0, disablekb=1, fs=0) -->
+          <iframe
+            id="youtube-player-iframe"
+            class="player-iframe"
+            src="https://www.youtube-nocookie.com/embed/{{ current_video.youtube_video_id }}?enablejsapi=1&autoplay=0&controls=0&disablekb=1&fs=0&rel=0&iv_load_policy=3&playsinline=1{% if current_video.current_time > 2 %}&start={{ current_video.current_time|int }}{% endif %}"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            tabindex="-1"
+            title="{{ current_video.title }}"
+          ></iframe>
+
+          <!-- Custom Click Surface (Single Click: Play/Pause, Double Click: Fullscreen) -->
+          <div id="player-click-surface" class="player-click-surface"></div>
+
+          <!-- Spacebar Hold 2x Speed Boost Banner -->
+          <div id="speed-boost-banner" class="speed-boost-banner" style="display: none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            <span class="speed-boost-text">2× SPEED BOOST</span>
+            <span class="speed-boost-hint">(HOLDING CONTROL)</span>
+          </div>
+
+          <!-- Floating Resume Indicator Pill -->
+          {% if current_video.current_time > 5 %}
+          <div id="resume-pill" class="resume-pill">
+            <span class="pulse-dot"></span>
+            <span>Resuming at</span>
+            <span class="resume-time">{{ current_video.current_time|format_time }}</span>
+            <button id="resume-restart-btn" class="resume-restart-btn" title="Restart from 0:00">Restart</button>
+          </div>
+          {% endif %}
+
+          <!-- Momentary HUD Flash Feedback -->
+          <div id="hud-flash-overlay" class="hud-flash-overlay"></div>
+
+          <!-- Custom Player Controls Deck -->
+          <div id="player-controls-deck" class="controls-deck visible">
+            <!-- Chapter-Preserving Interactive Seek Bar -->
+            <div id="seek-bar-wrapper" class="seek-bar-wrapper">
+              <div id="seek-bar-track" class="seek-bar-track">
+                <!-- Dynamically populated chapter segments -->
+              </div>
+              <div id="seek-playhead" class="seek-playhead"></div>
+              <div id="seek-tooltip" class="seek-tooltip" style="display: none;">
+                <div class="tooltip-chapter"></div>
+                <div class="tooltip-time">0:00</div>
+              </div>
+            </div>
+
+            <!-- Control Bar Buttons -->
+            <div class="control-bar">
+              <div class="controls-left">
+                <!-- Play / Pause Button -->
+                <button id="player-play-pause-btn" class="btn-play-pause" title="Play (Space / K)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-left: 2px;">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                  </svg>
+                </button>
+
+                <!-- Rewind 10s -->
+                <button id="player-rewind-btn" class="btn-ctrl" title="Rewind 10s (Left Arrow / J)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                </button>
+
+                <!-- Forward 10s -->
+                <button id="player-forward-btn" class="btn-ctrl" title="Forward 10s (Right Arrow / L)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                </button>
+
+                <!-- Dedicated Hold-to-2x Button (Hold or Touch for 2x) -->
+                <button id="player-hold-2x-btn" class="btn-hold-2x" title="Click & Hold for 2× Speed Boost">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                  <span>2× Hold</span>
+                </button>
+
+                <!-- Volume & Mute -->
+                <div class="volume-group">
+                  <button id="player-volume-btn" class="btn-ctrl" title="Mute / Unmute (M)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                  </button>
+                  <input id="player-volume-slider" type="range" min="0" max="100" value="100" class="volume-slider" title="Volume">
+                </div>
+
+                <!-- Real-Time Time Counter -->
+                <div class="time-display">
+                  <span id="player-current-time">{{ current_video.current_time|format_time }}</span>
+                  <span class="time-divider">/</span>
+                  <span id="player-duration" class="time-total">{{ current_video.duration|format_time }}</span>
+                </div>
+
+                <!-- Current Chapter Badge -->
+                <div id="active-chapter-badge" class="chapter-badge" style="display: none;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+                  <span class="chapter-badge-title"></span>
+                </div>
+              </div>
+
+              <div class="controls-right">
+                <!-- Subtitles / Closed Captions Toggle -->
+                <button id="player-cc-btn" class="btn-ctrl btn-cc" title="Subtitles / Closed Captions (C)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+                    <path d="M10 10.5C9.4 9.6 8.5 9 7.5 9 6.1 9 5 10.3 5 12s1.1 3 2.5 3c1 0 1.9-.6 2.5-1.5"></path>
+                    <path d="M19 10.5c-.6-.9-1.5-1.5-2.5-1.5-1.4 0-2.5 1.3-2.5 3s1.1 3 2.5 3c1 0 1.9-.6 2.5-1.5"></path>
+                  </svg>
+                </button>
+
+                <!-- Playback Speed Dropdown -->
+                <div class="speed-dropdown">
+                  <button id="player-speed-btn" class="btn-speed" title="Change Playback Speed">
+                    <span>{{ current_video.playback_rate or 1 }}×</span>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                  </button>
+                  <div id="player-speed-menu" class="speed-menu">
+                    <button class="speed-option" data-rate="0.5">0.5×</button>
+                    <button class="speed-option" data-rate="0.75">0.75×</button>
+                    <button class="speed-option active" data-rate="1">1.0×</button>
+                    <button class="speed-option" data-rate="1.25">1.25×</button>
+                    <button class="speed-option" data-rate="1.5">1.5×</button>
+                    <button class="speed-option" data-rate="1.75">1.75×</button>
+                    <button class="speed-option" data-rate="2">2.0×</button>
+                  </div>
+                </div>
+
+                <!-- Fullscreen Toggle -->
+                <button id="player-fullscreen-btn" class="btn-ctrl" title="Fullscreen (F)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Under-Player Info & Metadata Bar -->
+        <div class="player-footer">
+          <div class="video-meta">
+            <h1 class="video-title-main">{{ current_video.title }}</h1>
+            <div class="video-submeta">
+              <span>ID: <code style="font-family: var(--font-mono); color: #AAAAAA;">{{ current_video.youtube_video_id }}</code></span>
+              {% if current_video.last_watched_at %}
+              <span>• Last watched {{ current_video.last_watched_at|format_relative_time }}</span>
+              {% endif %}
+              <span>• Progress: <strong style="color: #FFFFFF;">{{ current_video.progress_percentage }}%</strong></span>
+            </div>
+          </div>
+
+          <div class="shortcuts-hint">
+            <span>Shortcuts:</span>
+            <kbd>Space</kbd> <span>play/pause</span>
+            <kbd>Hold Space</kbd> <span>2×</span>
+            <kbd>← / →</kbd> <span>±10s</span>
+            <kbd>C</kbd> <span>captions</span>
+            <kbd>F</kbd> <span>fullscreen</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Companion Sidebar Column (Chapters & Queue) -->
+    <div>
+      <div class="companion-panel">
+        <div class="tab-nav">
+          <button id="tab-btn-chapters" class="tab-btn active">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+            <span id="tab-chapters-count">Chapters</span>
+          </button>
+          <button id="tab-btn-queue" class="tab-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="21" y2="6"></line><line x1="10" y1="12" x2="21" y2="12"></line><line x1="10" y1="18" x2="21" y2="18"></line><path d="M4 6h1v4"></path><path d="M4 10h2"></path><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"></path></svg>
+            <span>Queue ({{ queue|length }})</span>
+          </button>
+        </div>
+
+        <div class="tab-content-area">
+          <!-- View 1: Chapters -->
+          <div id="companion-chapters-view">
+            <div id="chapters-list-loading" style="text-align: center; padding: 30px 0; color: var(--text-subtle);">
+              <span class="pulse-dot" style="display:inline-block; margin-bottom: 8px;"></span>
+              <p>Scanning video for chapters...</p>
+            </div>
+            <div id="chapters-list-container" style="display: none;"></div>
+            <div id="chapters-list-empty" style="display: none; text-align: center; padding: 40px 10px; color: var(--text-subtle);">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 8px; color: var(--text-subtle);"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              <p>No chapters found for this video.</p>
+              <p style="font-size: 11px; margin-top: 4px;">Calalog parses real chapters when creators provide timestamps in description or video markers.</p>
+            </div>
+          </div>
+
+          <!-- View 2: Queue -->
+          <div id="companion-queue-view" style="display: none;">
+            {% if queue|length == 0 %}
+            <div style="text-align: center; padding: 40px 10px; color: var(--text-subtle);">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 8px; color: var(--text-subtle);"><line x1="10" y1="6" x2="21" y2="6"></line><line x1="10" y1="12" x2="21" y2="12"></line><line x1="10" y1="18" x2="21" y2="18"></line></svg>
+              <p>Your queue is currently empty.</p>
+              <p style="font-size: 11px; margin-top: 4px;">Add videos from your library to play them in sequence.</p>
+            </div>
+            {% else %}
+            <div style="display:flex; justify-content:flex-end; margin-bottom: 8px;">
+              <button data-action="clear-queue" style="font-size:11px; color:var(--text-subtle); hover:color:#F87171;">Clear Queue</button>
+            </div>
+            <div class="queue-items-container">
+              {% for item in queue %}
+              <div class="queue-item {% if item.video.id == current_video.id %}active{% endif %}" data-queue-id="{{ item.id }}">
+                <div class="queue-reorder">
+                  <button data-action="move-queue-up" data-queue-id="{{ item.id }}" title="Move up" {% if loop.first %}disabled style="opacity:0.2;"{% endif %}>▲</button>
+                  <span style="font-family: var(--font-mono); font-size: 9px; color: var(--text-subtle);">{{ '%02d' % (loop.index) }}</span>
+                  <button data-action="move-queue-down" data-queue-id="{{ item.id }}" title="Move down" {% if loop.last %}disabled style="opacity:0.2;"{% endif %}>▼</button>
+                </div>
+                <div class="queue-thumb" onclick="window.location.href='/?v={{ item.video.id }}'">
+                  <img src="{{ item.video.thumbnail }}" alt="{{ item.video.title }}">
+                  <div class="queue-thumb-overlay">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="#FFFFFF"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                  </div>
+                </div>
+                <div class="queue-info" onclick="window.location.href='/?v={{ item.video.id }}'">
+                  <div class="queue-title">{{ item.video.title }}</div>
+                  <div class="queue-meta">{{ item.video.current_time|format_time }} / {{ item.video.duration|format_time }} • {{ item.video.progress_percentage }}%</div>
+                </div>
+                <button data-action="remove-queue-item" data-queue-id="{{ item.id }}" class="btn-icon" title="Remove from queue">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  {% else %}
+  <!-- Empty State -->
+  <section class="panel" style="text-align: center; padding: 60px 20px;">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 12px; color: var(--text-subtle);"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
+    <h3 style="font-size: 15px; font-weight: 700; color: #FFFFFF; text-transform: uppercase;">No active video selected</h3>
+    <p style="color: var(--text-muted); font-size: 12px; max-width: 400px; margin: 4px auto 16px;">Paste any YouTube video link above or pick a video from your library to start watching with automatic progress saving.</p>
+    {% if videos|length > 0 %}
+    <a href="{{ url_for('views.library_view') }}" class="btn-secondary">
+      <span>Browse Your Library ({{ videos|length }})</span>
+    </a>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <!-- Quick Access Library Section -->
+  <section style="margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--border-color);">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <h2 style="font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#FFFFFF;">Your Library</h2>
+        <span style="font-family: var(--font-mono); font-size:11px; color:var(--text-subtle);">({{ videos|length }})</span>
+      </div>
+      <a href="{{ url_for('views.library_view') }}" style="font-size:12px; color:var(--text-muted); font-weight:500;">
+        View Full Library →
+      </a>
+    </div>
+
+    {% if videos|length == 0 %}
+    <div class="panel" style="text-align: center; padding: 40px 10px; color: var(--text-subtle);">
+      <p>No videos tracked yet. Paste a YouTube URL above to begin.</p>
+    </div>
+    {% else %}
+    <div class="library-grid">
+      {% for video in videos[:6] %}
+      <div class="video-card {% if current_video and current_video.id == video.id %}active{% endif %}" id="video-card-{{ video.id }}" data-status="{{ video.status }}" data-title="{{ video.title }}" data-youtube-id="{{ video.youtube_video_id }}" data-progress="{{ video.progress_percentage }}" data-last-watched="{{ video.last_watched_at or '' }}" data-created-at="{{ video.created_at }}">
+        <div class="card-thumb-container" onclick="window.location.href='/?v={{ video.id }}'">
+          <img src="{{ video.thumbnail }}" alt="{{ video.title }}" loading="lazy">
+          <span class="card-status-badge {{ video.status }}">{{ video.status|replace('-', ' ') }}</span>
+          <span class="card-duration-badge">{{ video.current_time|format_time }} / {{ video.duration|format_time }}</span>
+          <div class="card-progress-bar-bottom">
+            <div class="card-progress-bar-fill {% if video.status == 'completed' %}completed{% endif %}" style="width: {{ video.progress_percentage }}%;"></div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div>
+            <h3 class="card-title" onclick="window.location.href='/?v={{ video.id }}'">{{ video.title }}</h3>
+            <div class="card-meta-row">
+              <span>Watched {{ video.last_watched_at|format_relative_time }}</span>
+              <span style="font-family: var(--font-mono); font-weight:600;">{{ video.progress_percentage }}%</span>
+            </div>
+          </div>
+          <div class="card-actions">
+            <a href="/?v={{ video.id }}" class="btn-secondary" style="font-size:11px; padding:4px 8px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              <span>{% if video.current_time > 5 %}Resume ({{ video.current_time|format_time }}){% else %}Play{% endif %}</span>
+            </a>
+            <div class="action-btn-group">
+              <button data-action="add-to-queue" data-video-id="{{ video.id }}" class="btn-icon" title="Add to queue">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+              </button>
+              {% if video.status != 'completed' %}
+              <button data-action="mark-completed" data-video-id="{{ video.id }}" data-duration="{{ video.duration }}" class="btn-icon" title="Mark as completed">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+              </button>
+              {% else %}
+              <button data-action="reset-progress" data-video-id="{{ video.id }}" class="btn-icon" title="Mark unwatched">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+              </button>
+              {% endif %}
+              <button data-action="delete-video" data-video-id="{{ video.id }}" class="btn-icon" title="Delete from library">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if current_video %}
+<script>
+  // Instantiate Custom YouTube Player Engine
+  document.addEventListener('DOMContentLoaded', () => {
+    const videoData = {
+      id: "{{ current_video.id }}",
+      youtube_video_id: "{{ current_video.youtube_video_id }}",
+      title: {{ current_video.title|tojson }},
+      duration: {{ current_video.duration|int }},
+      current_time: {{ current_video.current_time|float }},
+      progress_percentage: {{ current_video.progress_percentage|int }},
+      status: "{{ current_video.status }}",
+      playback_rate: {{ current_video.playback_rate or 1.0 }}
+    };
+
+    let playerInstance = null;
+
+    // Fetch real chapters without YouTube API key
+    fetch(`/api/youtube/info?id=${videoData.youtube_video_id}`)
+      .then(res => res.json())
+      .then(meta => {
+        const chapters = meta.chapters || [];
+        initPlayerWithChapters(chapters);
+        renderCompanionChapters(chapters);
+      })
+      .catch(err => {
+        console.warn('Failed to load chapters:', err);
+        initPlayerWithChapters([]);
+        renderCompanionChapters([]);
+      });
+
+    function initPlayerWithChapters(chapters) {
+      playerInstance = new CalalogPlayer({
+        container: '#calalog-player-container',
+        video: videoData,
+        chapters: chapters,
+        playerVars: {
+          controls: 0
+        },
+        onEnded: (vid) => {
+          // Auto-advance queue if next item exists
+          {% if queue|length > 0 %}
+            {% set next_index = -1 %}
+            {% for item in queue %}
+              {% if item.video.id == current_video.id %}
+                {% set next_index = loop.index0 + 1 %}
+              {% endif %}
+            {% endfor %}
+            {% if queue|length > 1 %}
+              window.location.href = '/?v={{ queue[1].video.id }}';
+            {% elif queue[0].video.id != current_video.id %}
+              window.location.href = '/?v={{ queue[0].video.id }}';
+            {% endif %}
+          {% endif %}
+        },
+        onChapterChange: (idx, chapter) => {
+          document.querySelectorAll('.chapter-item').forEach((item, i) => {
+            item.classList.toggle('active', i === idx);
+          });
+        }
+      });
+      window.calalogPlayerInstance = playerInstance;
+    }
+
+    function renderCompanionChapters(chapters) {
+      const loading = document.getElementById('chapters-list-loading');
+      const container = document.getElementById('chapters-list-container');
+      const empty = document.getElementById('chapters-list-empty');
+      const countEl = document.getElementById('tab-chapters-count');
+
+      if (loading) loading.style.display = 'none';
+
+      if (!chapters || chapters.length === 0) {
+        if (empty) empty.style.display = 'block';
+        if (countEl) countEl.textContent = 'Chapters (0)';
+        return;
+      }
+
+      if (countEl) countEl.textContent = `Chapters (${chapters.length})`;
+      if (container) {
+        container.style.display = 'block';
+        container.innerHTML = '';
+
+        chapters.forEach((ch, idx) => {
+          const btn = document.createElement('button');
+          btn.className = `chapter-item ${idx === 0 ? 'active' : ''}`;
+          btn.dataset.time = ch.time;
+          btn.innerHTML = `
+            <div class="chapter-title-col">
+              <span class="chapter-num">${(idx + 1).toString().padStart(2, '0')}</span>
+              <span class="chapter-name">${ch.title}</span>
+            </div>
+            <span class="chapter-time">${ch.formattedTime}</span>
+          `;
+          btn.addEventListener('click', () => {
+            if (playerInstance) {
+              playerInstance.seekTo(ch.time);
+              playerInstance.play();
+            }
+          });
+          container.appendChild(btn);
+        });
+      }
+    }
+  });
+</script>
+{% endif %}
+{% endblock %}

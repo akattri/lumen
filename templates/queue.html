@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Your Queue — Calalog{% endblock %}
+
+{% block content %}
+<div class="site-container">
+  <!-- Queue Header -->
+  <div class="panel" style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px;">
+    <div>
+      <h1 style="font-size:18px; font-weight:800; letter-spacing:-0.03em; color:#FFFFFF;">YOUR PLAYBACK QUEUE</h1>
+      <p style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+        Videos play in sequence automatically as each video finishes
+      </p>
+    </div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      {% if queue|length > 0 %}
+      <a href="/?v={{ queue[0].video.id }}" class="btn-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        <span>Play First in Queue</span>
+      </a>
+      <button data-action="clear-queue" class="btn-secondary" style="color:#F87171;">
+        <span>Clear Queue</span>
+      </button>
+      {% endif %}
+      <a href="{{ url_for('views.dashboard') }}" class="btn-secondary">
+        <span>Back to Player</span>
+      </a>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns: 1fr; gap:20px; @media(min-width: 992px){grid-template-columns: 2fr 1fr;}">
+    <!-- Queue Items Column -->
+    <div>
+      <div class="panel">
+        <h2 class="panel-title" style="margin-bottom: 14px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="21" y2="6"></line><line x1="10" y1="12" x2="21" y2="12"></line><line x1="10" y1="18" x2="21" y2="18"></line><path d="M4 6h1v4"></path><path d="M4 10h2"></path><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"></path></svg>
+          <span>Up Next ({{ queue|length }})</span>
+        </h2>
+
+        {% if queue|length == 0 %}
+        <div style="text-align: center; padding: 50px 20px; color: var(--text-subtle);">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 12px; color: var(--text-subtle);"><line x1="10" y1="6" x2="21" y2="6"></line><line x1="10" y1="12" x2="21" y2="12"></line><line x1="10" y1="18" x2="21" y2="18"></line></svg>
+          <p style="font-size: 14px; font-weight: 600; color: #FFFFFF;">Your queue is empty</p>
+          <p style="font-size: 12px; margin-top: 4px;">Select videos from the suggestions panel or your library to build your playlist.</p>
+        </div>
+        {% else %}
+        <div class="queue-items-container">
+          {% for item in queue %}
+          <div class="queue-item" data-queue-id="{{ item.id }}">
+            <div class="queue-reorder">
+              <button data-action="move-queue-up" data-queue-id="{{ item.id }}" title="Move up" {% if loop.first %}disabled style="opacity:0.2;"{% endif %}>▲</button>
+              <span style="font-family: var(--font-mono); font-size: 10px; color: var(--text-subtle);">{{ '%02d' % (loop.index) }}</span>
+              <button data-action="move-queue-down" data-queue-id="{{ item.id }}" title="Move down" {% if loop.last %}disabled style="opacity:0.2;"{% endif %}>▼</button>
+            </div>
+            <div class="queue-thumb" onclick="window.location.href='/?v={{ item.video.id }}'">
+              <img src="{{ item.video.thumbnail }}" alt="{{ item.video.title }}">
+              <div class="queue-thumb-overlay">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#FFFFFF"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              </div>
+            </div>
+            <div class="queue-info" onclick="window.location.href='/?v={{ item.video.id }}'">
+              <div class="queue-title" style="font-size: 13px;">{{ item.video.title }}</div>
+              <div class="queue-meta">{{ item.video.current_time|format_time }} / {{ item.video.duration|format_time }} • {{ item.video.progress_percentage }}% • {{ item.video.status }}</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <a href="/?v={{ item.video.id }}" class="btn-secondary" style="font-size:11px; padding:4px 8px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                <span>Play</span>
+              </a>
+              <button data-action="remove-queue-item" data-queue-id="{{ item.id }}" class="btn-icon" title="Remove from queue">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Suggestions from Library to Queue -->
+    <div>
+      <div class="panel">
+        <h2 class="panel-title" style="margin-bottom: 12px;">Add from Library</h2>
+        {% set queued_ids = queue|map(attribute='video_id')|list %}
+        {% set unqueued = [] %}
+        {% for v in videos %}
+          {% if v.id not in queued_ids %}
+            {% set _ = unqueued.append(v) %}
+          {% endif %}
+        {% endfor %}
+
+        {% if unqueued|length == 0 %}
+        <p style="font-size: 12px; color: var(--text-subtle); padding: 20px 0; text-align: center;">
+          All your saved library videos are already in the queue.
+        </p>
+        {% else %}
+        <div style="max-height: 480px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+          {% for vid in unqueued %}
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+            <div style="min-width: 0; padding-right: 8px;">
+              <p style="font-size: 12px; font-weight: 500; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ vid.title }}</p>
+              <p style="font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); margin-top: 2px;">{{ vid.duration|format_time }} • {{ vid.progress_percentage }}%</p>
+            </div>
+            <button data-action="add-to-queue" data-video-id="{{ vid.id }}" class="btn-secondary" style="font-size: 11px; padding: 3px 8px; flex-shrink: 0;">
+              + Queue
+            </button>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

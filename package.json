@@ -1,0 +1,13 @@
+{
+  "name": "calalog",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "python3 app.py",
+    "build": "python3 -m compileall -q .",
+    "start": "node server.ts",
+    "clean": "rm -rf __pycache__ models/__pycache__ routes/__pycache__ services/__pycache__",
+    "lint": "python3 -m py_compile app.py config.py"
+  }
+}

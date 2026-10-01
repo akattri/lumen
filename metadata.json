@@ -1,0 +1,6 @@
+{
+  "name": "Calalog",
+  "description": "A personal YouTube watch-progress tracker. Resume videos from where you stopped, organize queues, and temporarily speed up playback.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

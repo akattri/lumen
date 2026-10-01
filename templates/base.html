@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Calalog — YouTube Video Tracker & Resume Player{% endblock %}</title>
+  <meta name="description" content="A personal YouTube watch-progress tracker. Resume videos from where you stopped, organize queues, and temporarily speed up playback.">
+  <meta property="og:title" content="Calalog — YouTube Video Tracker & Resume Player">
+  <meta property="og:description" content="A personal YouTube watch-progress tracker. Resume videos from where you stopped, organize queues, and temporarily speed up playback.">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <!-- Header -->
+  <header class="site-header">
+    <div class="site-container header-inner">
+      <div class="header-left">
+        <a href="{{ url_for('views.dashboard') }}" class="brand-logo" title="Calalog Home">
+          <div class="brand-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+          </div>
+          <span>CALALOG</span>
+        </a>
+
+        {% if session.get('user_id') %}
+        <nav class="main-nav" aria-label="Main Navigation">
+          <a href="{{ url_for('views.dashboard') }}" class="nav-link {% if active_tab == 'learning' %}active{% endif %}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
+            <span>Player</span>
+          </a>
+          <a href="{{ url_for('views.library_view') }}" class="nav-link {% if active_tab == 'library' %}active{% endif %}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+            <span>Library</span>
+            {% if videos is defined and videos|length > 0 %}
+            <span class="count-badge">{{ videos|length }}</span>
+            {% endif %}
+          </a>
+          <a href="{{ url_for('views.queue_view') }}" class="nav-link {% if active_tab == 'queue' %}active{% endif %}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="21" y2="6"></line><line x1="10" y1="12" x2="21" y2="12"></line><line x1="10" y1="18" x2="21" y2="18"></line><path d="M4 6h1v4"></path><path d="M4 10h2"></path><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"></path></svg>
+            <span>Queue</span>
+            {% if queue is defined and queue|length > 0 %}
+            <span class="count-badge">{{ queue|length }}</span>
+            {% endif %}
+          </a>
+        </nav>
+        {% endif %}
+      </div>
+
+      <div class="header-right">
+        <button id="btn-open-shortcuts" class="header-btn" title="View Keyboard Shortcuts (?)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><line x1="6" y1="8" x2="6.01" y2="8"></line><line x1="10" y1="8" x2="10.01" y2="8"></line><line x1="14" y1="8" x2="14.01" y2="8"></line><line x1="18" y1="8" x2="18.01" y2="8"></line><line x1="6" y1="12" x2="6.01" y2="12"></line><line x1="10" y1="12" x2="10.01" y2="12"></line><line x1="14" y1="12" x2="14.01" y2="12"></line><line x1="18" y1="12" x2="18.01" y2="12"></line><line x1="8" y1="16" x2="16" y2="16"></line></svg>
+          <span style="display:none; @media(min-width: 640px){display:inline;}">Shortcuts</span>
+        </button>
+
+        {% if session.get('user_id') %}
+        <div class="user-profile">
+          <div class="user-avatar" title="Logged in as {{ session.get('username') }}">
+            {{ session.get('username', 'U')[:2]|upper }}
+          </div>
+          <a href="{{ url_for('auth.logout') }}" class="btn-icon" title="Log Out">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          </a>
+        </div>
+        {% else %}
+        <div style="display:flex; gap:8px;">
+          <a href="{{ url_for('views.login_page') }}" class="btn-secondary">Log In</a>
+          <a href="{{ url_for('views.register_page') }}" class="btn-primary">Register</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="site-container" style="margin-top: 16px;">
+      {% for category, message in messages %}
+      <div class="feedback-banner {% if category == 'error' %}error{% else %}success{% endif %}">
+        <span>{{ message }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- Main Content -->
+  <main class="main-content">
+    {% block content %}
+      {% if not_found %}
+      <div class="site-container" style="text-align: center; padding: 60px 0;">
+        <h1 style="font-size: 32px; font-weight: 800; margin-bottom: 8px;">404</h1>
+        <p style="color: var(--text-muted); margin-bottom: 20px;">The requested page could not be found.</p>
+        <a href="{{ url_for('views.dashboard') }}" class="btn-primary">Return to Player</a>
+      </div>
+      {% endif %}
+    {% endblock %}
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="site-container footer-inner">
+      <span>CALALOG — Pick up where you left off.</span>
+      <span style="font-family: var(--font-mono); font-size: 10px;">Zero YouTube API Keys • 100% Real Playback • Python + Flask</span>
+    </div>
+  </footer>
+
+  <!-- Keyboard Shortcuts Modal -->
+  <div id="shortcuts-modal" class="modal-backdrop">
+    <div class="modal-window">
+      <div class="modal-header">
+        <div class="modal-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><line x1="6" y1="8" x2="6.01" y2="8"></line><line x1="10" y1="8" x2="10.01" y2="8"></line><line x1="14" y1="8" x2="14.01" y2="8"></line><line x1="18" y1="8" x2="18.01" y2="8"></line><line x1="8" y1="16" x2="16" y2="16"></line></svg>
+          <span>Keyboard Shortcuts</span>
+        </div>
+        <button id="btn-close-shortcuts" class="btn-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Toggle Play / Pause</span>
+          <kbd>Space (Tap)</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Temporarily watch at 2× speed while held</span>
+          <kbd>Space (Hold)</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Toggle Play / Pause (secondary)</span>
+          <kbd>K</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Rewind 10 seconds</span>
+          <kbd>← / J</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Forward 10 seconds</span>
+          <kbd>→ / L</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Toggle Subtitles / CC</span>
+          <kbd>C</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Toggle Fullscreen mode</span>
+          <kbd>F</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Toggle Mute / Unmute</span>
+          <kbd>M</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Restart video from 0:00</span>
+          <kbd>0</kbd>
+        </div>
+      </div>
+      <p style="font-size: 11px; color: var(--text-subtle); margin-top: 14px; text-align: center;">
+        Shortcuts are active whenever typing focus is outside text input fields.
+      </p>
+    </div>
+  </div>
+
+  <!-- Vanilla Scripts -->
+  <script src="{{ url_for('static', filename='js/player.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>
