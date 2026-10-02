@@ -1,13 +1,8 @@
 import os
-import sys
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-PYLIB_DIR = os.path.join(BASE_DIR, 'pylib')
-if os.path.exists(PYLIB_DIR) and PYLIB_DIR not in sys.path:
-    sys.path.append(PYLIB_DIR)
 
-# In serverless environments like Vercel or AWS Lambda, the root filesystem is read-only.
-# SQLite and writable data must reside in /tmp.
+# Data directory (use /tmp in serverless environments like Vercel)
 is_serverless = bool(os.environ.get('VERCEL') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME'))
 if is_serverless:
     DATA_DIR = os.environ.get('DATA_DIR', '/tmp/data')
